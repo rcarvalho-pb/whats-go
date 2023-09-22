@@ -22,6 +22,10 @@ const ATTACH_MENU = "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]
 const INPUT_FILE = "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/span/div/ul/div/div[2]/li/div/input"
 const SEND_IMAGE_BUTTON = "//*[@id='app']/div/div/div[3]/div[2]/span/div/span/div/div/div[2]/div/div[2]/div[2]/div/div"
 const BUTTON_OK = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[2]/div/button/div/div"
+const INICIANDO = "Iniciando conversa"
+const LOADING_CONVERSATION = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]"
+const NOT_FOUND_TEXT = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]"
+const NUM_INVALIDO = "O número de telefone compartilhado através de url é inválido."
 
 func StartService() {
 	if service, err := selenium.NewChromeDriverService(DRIVER_PATH, 4444); err != nil {
@@ -51,17 +55,13 @@ func sendMessages(service *selenium.Service) selenium.WebDriver {
 			fmt.Printf("Starting %dº message...\n", i + 1)
 			driver.Get(link.Link)
 
-			if isElementLoaded(driver, selenium.ByXPATH, NOT_FOUND_ELEMENT) {
-				logs = append(logs, excel.Log{OS: link.OS, Contact: "NÃO"})
-				continue
-			} else {
-				fmt.Println("Element not found not fount")
-			}
-
-			if isElementLoaded(driver, selenium.ByXPATH, INPUT_ELEMENT) {
+			if isElementLoaded(driver, selenium.ByXPATH, LOADING_CONVERSATION) {
 				fmt.Println("The main element was found")
 				sendContent(driver)
 				logs = append(logs, excel.Log{OS: link.OS, Contact: "SIM"})
+				} else {
+					logs = append(logs, excel.Log{OS: link.OS, Contact: "NÃO"})
+					continue
 			}
 			
 			fmt.Printf("Ending %d message...\n", i + 1)
@@ -127,21 +127,39 @@ func send(driver selenium.WebDriver, elementXPath, typeOfSending string) {
 }
 
 func isElementLoaded(driver selenium.WebDriver, typeOfSearch, elementSearched string) bool {
-	if elementSearched == NOT_FOUND_ELEMENT {
-		if err := driver.Wait(conditions.ElementIsLocated(typeOfSearch, elementSearched)); err != nil {
-			fmt.Printf("Element NotFound not found\n")
-		}
-		time.Sleep(5 * time.Second)
-		_, err := driver.FindElement(selenium.ByXPATH, "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[2]/div/button/div/div");
+	if elementSearched != SIDE_ELEMENT {
+		err := driver.Wait(conditions.ElementIsLocated(typeOfSearch, elementSearched))
 		if err != nil {
+			fmt.Println("Loading element not found.")
 			return false
-		} else {
-			return true
 		}
+		for {
+			element, err := driver.FindElement(typeOfSearch, elementSearched)
+			if err != nil {
+				fmt.Println("Element text not found.")
+				return true
+			} 
+
+			text, err := element.Text()
+			if err != nil {
+				fmt.Println("Text not found")
+			}
+			if text != INICIANDO {
+				if text == NUM_INVALIDO {
+					return false
+				}
+			}
+		}
+
 	}
-	else {
-		
-	} 
+
+	if err := driver.Wait(conditions.ElementIsLocated(typeOfSearch, elementSearched)); err != nil {
+		fmt.Println("Whatsapp loading Timeout. Try again.");
+		return false
+	} else {
+		fmt.Println("Side founded")
+		return true
+	}
 }
 
 func getWebDriver() selenium.WebDriver {
