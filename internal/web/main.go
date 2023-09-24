@@ -14,18 +14,12 @@ import (
 const DRIVER_PATH = "src/chromedriver/chromedriver"
 const WHATSAPP_URL = "https://web.whatsapp.com"
 const SIDE_ELEMENT = "side"
-const NOT_FOUND_ELEMENT = "//*[@id='app']/div/span[2]/div/span/div/div/div/div"
+const NOT_FOUND_ELEMENT = "//*[@id='app']/div/span[2]/div/span/div/div/div"
 const INPUT_ELEMENT = "//*[@id='main']/footer/div[1]/div/span[2]/div/div[2]"
-const CLICK = "MOUSE"
-const ENTER = "ENTER"
 const ATTACH_MENU = "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/div"
 const INPUT_FILE = "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/span/div/ul/div/div[2]/li/div/input"
 const SEND_IMAGE_BUTTON = "//*[@id='app']/div/div/div[3]/div[2]/span/div/span/div/div/div[2]/div/div[2]/div[2]/div/div"
-const BUTTON_OK = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[2]/div/button/div/div"
 const INICIANDO = "Iniciando conversa"
-const LOADING_CONVERSATION = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]"
-const NOT_FOUND_TEXT = "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]"
-const NUM_INVALIDO = "O número de telefone compartilhado através de url é inválido."
 
 func StartService() {
 	if service, err := selenium.NewChromeDriverService(DRIVER_PATH, 4444); err != nil {
@@ -46,120 +40,133 @@ func sendMessages(service *selenium.Service) selenium.WebDriver {
 
 	driver := getWebDriver()
 	driver.Get("https://www.google.com")
+	time.Sleep(2 * time.Second)
 	driver.Get(WHATSAPP_URL)
+	
+	if isWhatsAppLogged(driver) {
+		time.Sleep(2 * time.Second)
+		fmt.Println("Whatsapp Logged.")
+		links := excel.GetLinks()
 
-	links := excel.GetLinks()
-
-	if isElementLoaded(driver, selenium.ByID, SIDE_ELEMENT) {
-		for i, link := range links {
-			fmt.Printf("Starting %dº message...\n", i + 1)
+		for _, link := range links {
 			driver.Get(link.Link)
-
-			if isElementLoaded(driver, selenium.ByXPATH, LOADING_CONVERSATION) {
-				fmt.Println("The main element was found")
-				sendContent(driver)
-				logs = append(logs, excel.Log{OS: link.OS, Contact: "SIM"})
-				} else {
-					logs = append(logs, excel.Log{OS: link.OS, Contact: "NÃO"})
-					continue
+			time.Sleep(2 * time.Second)
+			if isNumberInvalid(driver) {
+				continue
 			}
-			
-			fmt.Printf("Ending %d message...\n", i + 1)
+			time.Sleep(2 * time.Second)
+			sendText(driver)
+			time.Sleep(2 * time.Second)
+			sendImage(driver)
+
 			time.Sleep(5 * time.Second)
-		} 
+		}
+		
 	} else {
+		fmt.Println("Whatsapp not logged")
 		return driver
 	}
 
+	CloseWhats(driver)
 	excel.SaveLog(logs)
 
 	fmt.Println("Ending message service")
 	return driver
 }
 
-func sendContent(driver selenium.WebDriver) {
-	fmt.Println("Starting send content")
-	send(driver, INPUT_ELEMENT, ENTER)
-	if attachMenu, err := driver.FindElement(selenium.ByXPATH, ATTACH_MENU); err == nil {
-		attachMenu.Click()
-		time.Sleep(10 * time.Second)
-		if inputElement, err := driver.FindElement(selenium.ByXPATH, INPUT_FILE); err == nil {
-			if absPath, err := filepath.Abs("./src/images/foto.jpeg"); err == nil {
-				inputElement.SendKeys(absPath)
-				if sendImage, err := driver.FindElement(selenium.ByXPATH, SEND_IMAGE_BUTTON); err == nil {
-					sendImage.SendKeys(selenium.EnterKey)
-					fmt.Println("Ending send content")
-				}
-			} else {
-				panic(err)
-			}
-		} else {
-			panic(err)
-		}
-
-	} else {
-		panic(err)
+func sendText(driver selenium.WebDriver) {
+	element, err := driver.FindElement(selenium.ByXPATH, "//*[@id='main']/footer/div[1]/div/span[2]/div/div[2]/div[1]/div/div[1]")
+	if err != nil {
+		fmt.Println("Não consigo enviar")
 	}
+	element.SendKeys(selenium.EnterKey)
 }
 
-func send(driver selenium.WebDriver, elementXPath, typeOfSending string) {
-	fmt.Println("Starting send")
-	if typeOfSending == CLICK {
-		if isElementLoaded(driver, selenium.ByXPATH, elementXPath) {
-			if elementSearched, err := driver.FindElement(selenium.ByXPATH, elementXPath); err == nil {
-				elementSearched.Click()
-			} else {
-				panic(err)
-			}
-		}
+func sendImage(driver selenium.WebDriver) {
+	image, err := filepath.Abs("./src/images/fotos.jpeg")
+	fmt.Println(image)
+	if err != nil {
+		fmt.Println("Não foi possível encontrar a imagem.")
+	}
+	
+	attachBtn, err := driver.FindElement(selenium.ByXPATH, ATTACH_MENU)
+	if err != nil {
+		fmt.Println("Não encontrou o menu de arquivos")
+	}
+	attachBtn.Click()
+	time.Sleep(2 * time.Second)
+	
+	inputFile, err := driver.FindElement(selenium.ByXPATH, "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/span/div/ul/div/div[2]/li/div/input")
+	if err != nil {
+		fmt.Println("Não encontrou o input de arquivo")
 	}
 
-	if typeOfSending == ENTER {
-		if isElementLoaded(driver, selenium.ByXPATH, elementXPath) {
-			if elementSearched, err := driver.FindElement(selenium.ByXPATH, elementXPath); err == nil {
-				elementSearched.SendKeys(selenium.EnterKey)
-			} else {
-				panic(err)
-			}
-		}
+	inputFile.SendKeys(image)
+
+	time.Sleep(2 * time.Second)
+
+	sendButton, err := driver.FindElement(selenium.ByXPATH, "//*[@id='app']/div/div/div[3]/div[2]/span/div/span/div/div/div[2]/div/div[1]/div[3]/div/div/div[2]/div[1]/div[1]")
+	if err != nil {
+		fmt.Println("Não da pra enviar. Não achei onde envia")
 	}
-	fmt.Println("Ending send")
+
+	time.Sleep(2 * time.Second)
+
+	sendButton.SendKeys(selenium.EnterKey)
+
+
 }
 
-func isElementLoaded(driver selenium.WebDriver, typeOfSearch, elementSearched string) bool {
-	if elementSearched != SIDE_ELEMENT {
-		err := driver.Wait(conditions.ElementIsLocated(typeOfSearch, elementSearched))
-		if err != nil {
-			fmt.Println("Loading element not found.")
-			return false
-		}
-		for {
-			element, err := driver.FindElement(typeOfSearch, elementSearched)
-			if err != nil {
-				fmt.Println("Element text not found.")
-				return true
-			} 
-
-			text, err := element.Text()
-			if err != nil {
-				fmt.Println("Text not found")
-			}
-			if text != INICIANDO {
-				if text == NUM_INVALIDO {
-					return false
-				}
-			}
-		}
-
-	}
-
-	if err := driver.Wait(conditions.ElementIsLocated(typeOfSearch, elementSearched)); err != nil {
+func isWhatsAppLogged(driver selenium.WebDriver) bool {
+	fmt.Println("Checking if whatsapp is logged.")
+	if err := driver.Wait(conditions.ElementIsLocated(selenium.ByID, SIDE_ELEMENT)); err != nil {
 		fmt.Println("Whatsapp loading Timeout. Try again.");
 		return false
 	} else {
 		fmt.Println("Side founded")
 		return true
 	}
+}
+func isNumberInvalid(driver selenium.WebDriver) bool {
+	fmt.Println("Checking if number is valid")
+		err := driver.Wait(conditions.ElementIsLocated(selenium.ByXPATH, NOT_FOUND_ELEMENT))
+		if err != nil {
+			fmt.Println("Carregar conversa não encontrado")
+			return false
+		}
+
+		fmt.Println("Loading conversation carregado")
+
+		for {
+			_, err := driver.FindElement(selenium.ByXPATH, NOT_FOUND_ELEMENT)
+			if err != nil {
+				fmt.Println("Element text not found.")
+				return true
+			} 
+
+			time.Sleep(2 * time.Second)
+
+			element, err := driver.FindElement(selenium.ByXPATH, "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]")
+			if err != nil {
+				fmt.Println("Erro ao procurar texto de conversa invalida")
+				return false
+			}
+
+			text, err := element.Text()
+			if err != nil {
+				fmt.Println("Text not found")
+				return false
+			}
+			if text != INICIANDO {
+				if text == "O número de telefone compartilhado através de url é inválido." {
+					fmt.Println("Conversa não carregada")
+					return true
+				} else {
+					fmt.Println("Conversa carregada")
+					return false
+				}
+			}
+		}
 }
 
 func getWebDriver() selenium.WebDriver {
@@ -181,5 +188,31 @@ func getWebDriver() selenium.WebDriver {
 		fmt.Println("Ending get WebDriver")
 		return driver
 	}
+}
+
+func CloseWhats(browser selenium.WebDriver) {
+	fmt.Println("Closing Web Whatsapp...")
+
+	menu, err := browser.FindElement(selenium.ByXPATH, "//*[@id='app']/div/div/div[4]/header/div[2]/div/span/div[5]/div")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	menu.Click()
+	time.Sleep(2 * time.Second)
+	logout, err := browser.FindElement(selenium.ByXPATH, "//*[@id='app']/div/div/div[4]/header/div[2]/div/span/div[5]/span/div/ul/li[6]/div")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	logout.Click()
+	time.Sleep(2 * time.Second)
+	getOut, err := browser.FindElement(selenium.ByXPATH, "//*[@id='app']/div/span[2]/div/div/div/div/div/div/div[3]/div/button[2]")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	getOut.Click()
+
+	time.Sleep(5 * time.Second)
+
+	fmt.Println("Web Whatsapp closed")
 }
 
