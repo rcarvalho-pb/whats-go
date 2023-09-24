@@ -7,5 +7,5 @@ import (
 
 func main() {
 	web.StartService()
-	// teste()
+	// WriteLog()
 }

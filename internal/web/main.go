@@ -11,7 +11,7 @@ import (
 	"github.com/tebeka/selenium/chrome"
 )
 
-const DRIVER_PATH = "src/chromedriver/chromedriver"
+const DRIVER_PATH = "src/chromedriver/chromedriver-mac"
 const WHATSAPP_URL = "https://web.whatsapp.com"
 const SIDE_ELEMENT = "side"
 const NOT_FOUND_ELEMENT = "//*[@id='app']/div/span[2]/div/span/div/div/div"
@@ -36,30 +36,30 @@ func StartService() {
 
 func sendMessages(service *selenium.Service) selenium.WebDriver {
 	fmt.Println("Starting SendMessages...")
-	var logs []excel.Log
+	log := excel.CreateExcelFile()
 
 	driver := getWebDriver()
 	driver.Get("https://www.google.com")
-	time.Sleep(2 * time.Second)
 	driver.Get(WHATSAPP_URL)
 	
 	if isWhatsAppLogged(driver) {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		fmt.Println("Whatsapp Logged.")
 		links := excel.GetLinks()
 
 		for _, link := range links {
 			driver.Get(link.Link)
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 			if isNumberInvalid(driver) {
+				newLog := excel.Log{OS: link.OS, Contact: "NÃO", Date: time.Now().Format(time.DateTime)}
+				excel.WriteLog(log, newLog)
 				continue
 			}
-			time.Sleep(2 * time.Second)
 			sendText(driver)
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 			sendImage(driver)
-
-			time.Sleep(5 * time.Second)
+			newLog := excel.Log{OS: link.OS, Contact: "NÃO", Date: time.Now().Format(time.DateTime)}
+			excel.WriteLog(log, newLog)
 		}
 		
 	} else {
@@ -68,7 +68,6 @@ func sendMessages(service *selenium.Service) selenium.WebDriver {
 	}
 
 	CloseWhats(driver)
-	excel.SaveLog(logs)
 
 	fmt.Println("Ending message service")
 	return driver
@@ -83,7 +82,7 @@ func sendText(driver selenium.WebDriver) {
 }
 
 func sendImage(driver selenium.WebDriver) {
-	image, err := filepath.Abs("./src/images/fotos.jpeg")
+	image, err := filepath.Abs("src/images/foto.jpeg")
 	fmt.Println(image)
 	if err != nil {
 		fmt.Println("Não foi possível encontrar a imagem.")
@@ -94,7 +93,7 @@ func sendImage(driver selenium.WebDriver) {
 		fmt.Println("Não encontrou o menu de arquivos")
 	}
 	attachBtn.Click()
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	
 	inputFile, err := driver.FindElement(selenium.ByXPATH, "//*[@id='main']/footer/div[1]/div/span[2]/div/div[1]/div[2]/div/span/div/ul/div/div[2]/li/div/input")
 	if err != nil {
@@ -103,14 +102,14 @@ func sendImage(driver selenium.WebDriver) {
 
 	inputFile.SendKeys(image)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	sendButton, err := driver.FindElement(selenium.ByXPATH, "//*[@id='app']/div/div/div[3]/div[2]/span/div/span/div/div/div[2]/div/div[1]/div[3]/div/div/div[2]/div[1]/div[1]")
 	if err != nil {
 		fmt.Println("Não da pra enviar. Não achei onde envia")
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	sendButton.SendKeys(selenium.EnterKey)
 
