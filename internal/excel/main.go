@@ -3,11 +3,15 @@ package excel
 import (
 	"fmt"
 	"os"
-	"strconv"
+	"strings"
+
+	// "strconv"
 
 	// "time"
 
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const INPUT_FILE = "./src/input/modelo_importacao_lote.xlsx"
@@ -107,10 +111,19 @@ func GetLinks() []Info {
 		if i != 0 {
 			name := row[4]
 			phone := row[12]
-			address := row[10]
+			typeOfService := row[2]
 			os := row[0]
 
-			msg := strconv.Quote(fmt.Sprintf("Olá, %s. Tudo bem? Queria confirmar se o seu endereço realmente é %s", name, address))
+			typeOfServiceSplited := strings.Split(typeOfService, "|")
+			serviceString := strings.Trim(typeOfServiceSplited[1], " ")
+
+			for _, c := range []cases.Caser{
+				cases.Title(language.Dutch),
+			} {
+				serviceString = c.String(serviceString)
+			}
+
+			msg := (fmt.Sprintf("Olá, %s. Tudo bem? Sou da Engeselt e estou entrando em contato para confirmar algumas informações e assim prosseguirmos com o seu pedido de \"%s\". Preciso que me encaminhe por meio deste Whatsapp as seguintes informações:", name, serviceString))
 
 			link := fmt.Sprintf("https://web.whatsapp.com/send?phone=%s&text=%s", phone, msg)
 			info := Info{link, os}

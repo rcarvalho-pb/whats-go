@@ -51,15 +51,17 @@ func sendMessages(service *selenium.Service) selenium.WebDriver {
 			driver.Get(link.Link)
 			time.Sleep(1 * time.Second)
 			if isNumberInvalid(driver) {
-				newLog := excel.Log{OS: link.OS, Contact: "NÃO", Date: time.Now().Format(time.DateTime)}
+				newLog := excel.Log{OS: link.OS, Contact: "NÃO", Date: time.Now().Format(time.RFC822)}
 				excel.WriteLog(log, newLog)
 				continue
 			}
 			sendText(driver)
 			time.Sleep(1 * time.Second)
 			sendImage(driver)
-			newLog := excel.Log{OS: link.OS, Contact: "NÃO", Date: time.Now().Format(time.DateTime)}
+			newLog := excel.Log{OS: link.OS, Contact: "SIM", Date: time.Now().Format(time.RFC822)}
 			excel.WriteLog(log, newLog)
+
+			time.Sleep(5 * time.Second)
 		}
 		
 	} else {
@@ -79,6 +81,20 @@ func sendText(driver selenium.WebDriver) {
 		fmt.Println("Não consigo enviar")
 	}
 	element.SendKeys(selenium.EnterKey)
+	time.Sleep(1000 * time.Millisecond)
+	element.SendKeys("1 - A localização onde o projeto será realizado;")
+	element.SendKeys(selenium.EnterKey)
+	time.Sleep(1000 * time.Millisecond)
+	element.SendKeys(" 2 - Uma referência para ajudar a encontrar o local;")
+	element.SendKeys(selenium.EnterKey)
+	time.Sleep(1000 * time.Millisecond)
+	element.SendKeys("3 - Uma foto do seu padrão de entrada;")
+	element.SendKeys(selenium.EnterKey)
+	time.Sleep(1000 * time.Millisecond)
+	element.SendKeys("4 - Uma foto do seu disjuntor.")
+	element.SendKeys(selenium.EnterKey)
+	time.Sleep(1000 * time.Millisecond)
+	
 }
 
 func sendImage(driver selenium.WebDriver) {
@@ -128,7 +144,13 @@ func isWhatsAppLogged(driver selenium.WebDriver) bool {
 }
 func isNumberInvalid(driver selenium.WebDriver) bool {
 	fmt.Println("Checking if number is valid")
-		err := driver.Wait(conditions.ElementIsLocated(selenium.ByXPATH, NOT_FOUND_ELEMENT))
+	time.Sleep(2 * time.Second)
+	inputTextElement, err := driver.FindElement(selenium.ByXPATH, "//*[@id='main']/footer/div[1]/div/span[2]/div/div[2]/div[1]/div/div/p")
+	if err != nil {
+		fmt.Println("Não encontrou elemento de digitar o texto")
+	}
+	if inputTextElement == nil {
+		err = driver.Wait(conditions.ElementIsLocated(selenium.ByXPATH, NOT_FOUND_ELEMENT))
 		if err != nil {
 			fmt.Println("Carregar conversa não encontrado")
 			return false
@@ -140,10 +162,10 @@ func isNumberInvalid(driver selenium.WebDriver) bool {
 			_, err := driver.FindElement(selenium.ByXPATH, NOT_FOUND_ELEMENT)
 			if err != nil {
 				fmt.Println("Element text not found.")
-				return true
+				return false
 			} 
 
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 
 			element, err := driver.FindElement(selenium.ByXPATH, "//*[@id='app']/div/span[2]/div/span/div/div/div/div/div/div[1]")
 			if err != nil {
@@ -166,6 +188,10 @@ func isNumberInvalid(driver selenium.WebDriver) bool {
 				}
 			}
 		}
+
+	} else {
+		return false
+	}
 }
 
 func getWebDriver() selenium.WebDriver {
